@@ -1280,10 +1280,10 @@ public class PhoneSwitcher extends Handler {
                 subId, needValidation ? 1 : 0, callback).sendToTarget();
     }
 
-    protected boolean isCallActive(Phone phone) {
+    protected boolean isPhoneInVoiceCall(Phone phone) {
         if (phone == null) {
             return false;
-        }
+    }
 
         // A phone in voice call might trigger data being switched to it.
         // We only report true if its precise call state is ACTIVE, ALERTING or HOLDING.
