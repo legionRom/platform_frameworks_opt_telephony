@@ -210,6 +210,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     final Integer mPhoneId;
     private List<String> mOldRilFeatures;
+    private boolean mUseOldMncMccFormat;
 
     /**
      * A set that records if radio service is disabled in hal for
@@ -583,6 +584,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         final String oldRilFeatures = SystemProperties.get("ro.telephony.ril.config", "");
         mOldRilFeatures = Arrays.asList(oldRilFeatures.split(","));
+
+        mUseOldMncMccFormat = SystemProperties.getBoolean(
+                "ro.telephony.use_old_mnc_mcc_format", false);
 
         ConnectivityManager cm = (ConnectivityManager)context.getSystemService(
                 Context.CONNECTIVITY_SERVICE);
@@ -2009,6 +2013,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_NETWORK_SELECTION_MANUAL, result,
                     mRILDefaultWorkSource);
 
+            if (mUseOldMncMccFormat && !TextUtils.isEmpty(operatorNumeric)) {
+                operatorNumeric += "+";
+            }
+
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
                         + " operatorNumeric = " + operatorNumeric);
@@ -3266,7 +3274,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             CdmaSmsWriteArgs args = new CdmaSmsWriteArgs();
             args.status = status;
-            constructCdmaSendSmsRilRequest(args.message, pdu.getBytes());
+            constructCdmaSendSmsRilRequest(args.message, IccUtils.hexStringToBytes(pdu));
 
             try {
                 radioProxy.writeSmsToRuim(rr.mSerial, args);
@@ -5943,11 +5951,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
         }
         switch (voiceRat) {
+            case ServiceState.RIL_RADIO_TECHNOLOGY_GPRS: /* fallthrough */
+            case ServiceState.RIL_RADIO_TECHNOLOGY_EDGE: /* fallthrough */
             case ServiceState.RIL_RADIO_TECHNOLOGY_UMTS: /* fallthrough */
             case ServiceState.RIL_RADIO_TECHNOLOGY_HSDPA: /* fallthrough */
             case ServiceState.RIL_RADIO_TECHNOLOGY_HSUPA: /* fallthrough */
             case ServiceState.RIL_RADIO_TECHNOLOGY_HSPA: /* fallthrough */
             case ServiceState.RIL_RADIO_TECHNOLOGY_HSPAP: /* fallthrough */
+            case ServiceState.RIL_RADIO_TECHNOLOGY_GSM: /* fallthrough */
                 break;
             default:
                 // If we are not currently on WCDMA/HSPA, then we don't need to do a fixup.

@@ -161,7 +161,7 @@ public class PhoneSwitcher extends Handler {
     @UnsupportedAppUsage
     protected final int mNumPhones;
     @UnsupportedAppUsage
-    private final Phone[] mPhones;
+    protected final Phone[] mPhones;
     private final LocalLog mLocalLog;
     @VisibleForTesting
     public final PhoneStateListener mPhoneStateListener;
@@ -172,12 +172,12 @@ public class PhoneSwitcher extends Handler {
                     EVENT_NETWORK_VALIDATION_DONE, subId, validated ? 1 : 0).sendToTarget();
     @UnsupportedAppUsage
     protected int mMaxActivePhones;
-    private static PhoneSwitcher sPhoneSwitcher = null;
+    protected static PhoneSwitcher sPhoneSwitcher = null;
 
     // Which primary (non-opportunistic) subscription is set as data subscription among all primary
     // subscriptions. This value usually comes from user setting, and it's the subscription used for
     // Internet data if mOpptDataSubId is not set.
-    private int mPrimaryDataSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    protected int mPrimaryDataSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
     // mOpptDataSubId must be an active subscription. If it's set, it overrides mPrimaryDataSubId
     // to be used for Internet data.
@@ -625,7 +625,20 @@ public class PhoneSwitcher extends Handler {
         }
     }
 
-    private boolean isInEmergencyCallbackMode() {
+    protected boolean isEmergency() {
+        if (isInEmergencyCallbackMode()) return true;
+        for (Phone p : mPhones) {
+            if (p == null) continue;
+            if (p.isInEmergencyCall()) return true;
+            Phone imsPhone = p.getImsPhone();
+            if (imsPhone != null && imsPhone.isInEmergencyCall()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected boolean isInEmergencyCallbackMode() {
         for (Phone p : mPhones) {
             if (p == null) continue;
             if (p.isInEcm()) return true;
@@ -877,6 +890,11 @@ public class PhoneSwitcher extends Handler {
     }
 
     private void switchPhone(int phoneId, boolean active) {
+        if (phoneId < 0 || phoneId >= mNumPhones) {
+            log("switchPhone, phoneId: " + phoneId +
+                ", mNumPhones: " + mNumPhones + ", should never here!");
+            return;
+        }
         PhoneState state = mPhoneStates[phoneId];
         if (state.active == active) return;
         state.active = active;
@@ -984,6 +1002,11 @@ public class PhoneSwitcher extends Handler {
         return phoneId;
     }
 
+    protected int getSubIdFromNetworkRequest(NetworkRequest networkRequest) {
+        NetworkSpecifier specifier = networkRequest.networkCapabilities.getNetworkSpecifier();
+        return getSubIdFromNetworkSpecifier(specifier);
+    }
+
     protected int getSubIdFromNetworkSpecifier(NetworkSpecifier specifier) {
         if (specifier == null) {
             return DEFAULT_SUBSCRIPTION_ID;
@@ -1052,7 +1075,7 @@ public class PhoneSwitcher extends Handler {
         mPreferredDataSubId = mSubscriptionController.getSubIdUsingPhoneId(mPreferredDataPhoneId);
     }
 
-    private void transitionToEmergencyPhone() {
+    protected void transitionToEmergencyPhone() {
         if (mPreferredDataPhoneId != DEFAULT_EMERGENCY_PHONE_ID) {
             log("No active subscriptions: resetting preferred phone to 0 for emergency");
             mPreferredDataPhoneId = DEFAULT_EMERGENCY_PHONE_ID;
@@ -1092,6 +1115,11 @@ public class PhoneSwitcher extends Handler {
 
     @VisibleForTesting
     protected boolean isPhoneActive(int phoneId) {
+        if (phoneId < 0 || phoneId >= mNumPhones) {
+            log("isPhoneActive, phoneId: " + phoneId +
+                ", mNumPhones: " + mNumPhones + ", should never here!");
+            return false;
+        }
         return mPhoneStates[phoneId].active;
     }
 
@@ -1252,11 +1280,7 @@ public class PhoneSwitcher extends Handler {
                 subId, needValidation ? 1 : 0, callback).sendToTarget();
     }
 
-<<<<<<< HEAD
-    private boolean isPhoneInVoiceCall(Phone phone) {
-=======
     protected boolean isCallActive(Phone phone) {
->>>>>>> 45a2812df... Add support for data call continuity during calls
         if (phone == null) {
             return false;
         }

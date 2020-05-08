@@ -109,8 +109,9 @@ public class MultiSimSettingController extends Handler {
 
     protected final Context mContext;
     protected final SubscriptionController mSubController;
+    protected boolean mIsAllSubscriptionsLoaded;
     // Keep a record of active primary (non-opportunistic) subscription list.
-    @NonNull private List<Integer> mPrimarySubList = new ArrayList<>();
+    @NonNull protected List<Integer> mPrimarySubList = new ArrayList<>();
 
     /** The singleton instance. */
     protected static MultiSimSettingController sInstance = null;
@@ -276,7 +277,7 @@ public class MultiSimSettingController extends Handler {
      * If user is enabling a non-default non-opportunistic subscription, make it default
      * data subscription.
      */
-    private void onUserDataEnabled(int subId, boolean enable) {
+    protected void onUserDataEnabled(int subId, boolean enable) {
         if (DBG) log("onUserDataEnabled");
         // Make sure MOBILE_DATA of subscriptions in same group are synced.
         setUserDataEnabledForGroup(subId, enable);
